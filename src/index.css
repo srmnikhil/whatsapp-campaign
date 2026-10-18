@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+/* Brand tokens mirror garaaz-web/src/styles.css with high-polish enhancements. */
+@theme {
+  --font-sans: "Plus Jakarta Sans", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+
+  --color-surface: #F8FAFC;
+  --color-card: #FFFFFF;
+  --color-line: #E2E8F0;
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #64748B;
+  --color-navy: #042D4D;
+  --color-navy-700: #063a64;
+  --color-navy-800: #03213a;
+  --color-navy-900: #021626;
+  --color-navy-50: #E6EEF5;
+  --color-muted: #F1F5F9;
+  --color-brand-red: #EF4444;
+  --color-brand-green: #10B981;
+  --color-brand-emerald: #00A85E;
+  --color-brand-yellow: #F59E0B;
+  --color-brand-blue: #2563EB;
+
+  /* WhatsApp chat wallpaper, used only by the message preview. */
+  --color-whatsapp-chat: #efeae2;
+  --color-whatsapp-bubble: #ffffff;
+  --color-whatsapp-green: #25D366;
+}
+
+@layer base {
+  * { border-color: var(--color-line); }
+  html, body {
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    letter-spacing: -0.01em;
+  }
+
+  /* Sleek modern scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 9999px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8;
+  }
+}
