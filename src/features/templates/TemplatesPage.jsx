@@ -2,16 +2,23 @@ import { useEffect, useState } from 'react';
 import { ASYNC_STATUS } from '../../constants/asyncStatus.js';
 import { TEMPLATE_REQUIRED_KEYS } from '../../constants/settingsFields.js';
 import { getMissingKeys } from '../../lib/settings.js';
+import { groupTemplatesByVersion } from '../../lib/templates.js';
 import { MissingSettingsAlert } from '../settings/MissingSettingsAlert.jsx';
 import { CreateTemplateForm } from './CreateTemplateForm.jsx';
 import { TemplateList } from './TemplateList.jsx';
+
+/** The app scrolls inside <main>, not the window. */
+function scrollToTop() {
+  document.getElementById('app-scroll')?.scrollTo?.({ top: 0, behavior: 'smooth' });
+}
 
 export function TemplatesPage({ settings, templatesState, onNavigateToSettings }) {
   const { status, load, templates = [] } = templatesState || {};
   const missingKeys = getMissingKeys(settings, TEMPLATE_REQUIRED_KEYS);
   const canLoad = missingKeys.length === 0;
-  const [showCreate, setShowCreate] = useState(() => templates.length === 0);
-  const [selectedId, setSelectedId] = useState(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState(null);
+  const [isCopy, setIsCopy] = useState(false);
 
   useEffect(() => {
     if (canLoad && status === ASYNC_STATUS.IDLE) load();
@@ -19,37 +26,70 @@ export function TemplatesPage({ settings, templatesState, onNavigateToSettings }
 
   if (!canLoad) return <MissingSettingsAlert missingKeys={missingKeys} onNavigateToSettings={onNavigateToSettings} />;
 
-  const isCreating = showCreate || templates.length === 0;
+  const isFormOpen = showCreate || Boolean(editingTemplate);
+
+  const handleEdit = (template) => {
+    setEditingTemplate(template);
+    setIsCopy(false);
+    setShowCreate(false);
+    scrollToTop();
+  };
+
+  const handleDuplicate = (template) => {
+    setEditingTemplate(template);
+    setIsCopy(true);
+    setShowCreate(false);
+    scrollToTop();
+  };
+
+  const handleOpenCreate = () => {
+    setEditingTemplate(null);
+    setIsCopy(false);
+    setShowCreate(true);
+    scrollToTop();
+  };
+
+  const handleCloseForm = () => {
+    setShowCreate(false);
+    setEditingTemplate(null);
+    setIsCopy(false);
+  };
+
+  const versions =
+    editingTemplate && !isCopy
+      ? (groupTemplatesByVersion(templates).find((g) =>
+          g.versions.some((v) => v.name === editingTemplate.name),
+        )?.versions ?? [])
+      : [];
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Create Template Form (shown when creating or when no templates exist) */}
-      {isCreating && (
+    <div className="flex flex-col gap-8">
+      {/* Create / Edit Template Form (shown when creating, editing, or when no templates exist) */}
+      {isFormOpen && (
         <div className="flex flex-col gap-3">
-          {templates.length > 0 && (
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => setShowCreate(false)}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 cursor-pointer"
-              >
-                ← Back to templates list
-              </button>
-            </div>
-          )}
           <CreateTemplateForm
+            key={`${editingTemplate?.name ?? 'new'}${isCopy ? ':copy' : ''}`}
             settings={settings}
+            template={editingTemplate}
+            isCopy={isCopy}
+            versions={versions}
+            onSelectVersion={setEditingTemplate}
             onCreated={templatesState.refreshOne}
+            onBack={handleCloseForm}
+            onDelete={(t) => {
+              templatesState.deleteOne?.(t.name);
+              handleCloseForm();
+            }}
           />
         </div>
       )}
 
-      {/* Template List + Right Phone Preview */}
+      {/* Templates Table List */}
       <TemplateList
         templatesState={templatesState}
-        selectedId={selectedId}
-        onSelectId={setSelectedId}
-        onOpenCreate={() => setShowCreate(true)}
+        onOpenCreate={handleOpenCreate}
+        onEditTemplate={handleEdit}
+        onDuplicateTemplate={handleDuplicate}
       />
     </div>
   );

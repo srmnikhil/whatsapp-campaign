@@ -11,8 +11,6 @@ export const TEMPLATE_DEFAULTS = Object.freeze({
   pageSize: 100,
   languages: Object.freeze([
     { value: 'en', label: 'English (en)' },
-    { value: 'en_US', label: 'English US (en_US)' },
-    { value: 'en_GB', label: 'English UK (en_GB)' },
     { value: 'hi', label: 'Hindi (hi)' },
   ]),
 });
@@ -48,7 +46,14 @@ export const QUALITY_LABELS = Object.freeze({
   UNKNOWN: 'Unknown',
 });
 
-/** Fixed pacing: 5 messages/second in the browser. 80 msg/s is the Meta ceiling. */
+/** Default and minimum delay between consecutive message API calls in milliseconds (200ms = 5 msg/s). */
+export const DEFAULT_SEND_DELAY_MS = 200;
+export const MIN_SEND_DELAY_MS = 200;
+
+/** Maximum allowed unique contacts per campaign send. */
+export const MAX_UNIQUE_USERS_LIMIT = 2_000;
+
+/** Fixed pacing fallback: 5 messages/second in the browser. 80 msg/s is the Meta ceiling. */
 export const SEND_PACING_MPS = 5;
 
 /** Payload on the STOP button so the webhook doesn't depend on label text. */

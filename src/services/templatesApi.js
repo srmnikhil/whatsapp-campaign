@@ -45,3 +45,14 @@ export function getTemplate(client, templateId, { signal } = {}) {
 export function createTemplate(client, wabaId, payload, { signal } = {}) {
   return client.request(`/${encodeURIComponent(wabaId)}/message_templates`, { method: 'POST', body: payload, signal });
 }
+
+/**
+ * Deletes a template by name from Meta.
+ */
+export function deleteTemplate(client, wabaId, templateName, { signal } = {}) {
+  return client.request(`/${encodeURIComponent(wabaId)}/message_templates`, {
+    method: 'DELETE',
+    query: { name: templateName },
+    signal,
+  });
+}

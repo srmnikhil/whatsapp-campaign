@@ -45,14 +45,19 @@ function buttonsProblem(buttons) {
   return null;
 }
 
+export const ALLOWED_CAMPAIGN_CATEGORIES = Object.freeze([
+  TEMPLATE_CATEGORY.MARKETING,
+  TEMPLATE_CATEGORY.UTILITY,
+]);
+
 /**
- * Why a template can't be used for a v1 campaign. Empty when it can.
+ * Why a template can't be used for a campaign. Empty when it can.
  * @param {ReturnType<typeof summarizeTemplate>} template
  */
 export function getCampaignProblems(template) {
   return [
     template.status !== TEMPLATE_STATUS.APPROVED && `Status is ${template.status}`,
-    template.category !== TEMPLATE_CATEGORY.MARKETING && `Category is ${template.category}`,
+    !ALLOWED_CAMPAIGN_CATEGORIES.includes(template.category) && `Category is ${template.category}`,
     headerProblem(template.header),
     bodyProblem(template),
     buttonsProblem(template.buttons),
@@ -120,4 +125,37 @@ export function isMarketing(template) {
 /** Usable templates first, then by name. */
 export function sortTemplates(templates) {
   return [...templates].sort((a, b) => a.problems.length - b.problems.length || a.name.localeCompare(b.name));
+}
+
+const VERSION_SUFFIX = /_v(\d+)$/i;
+
+/** Version number from a name like `estimate_ready_en_v3` (3), or 0 when it has no `_vN` suffix. */
+export function getTemplateVersion(name = '') {
+  const match = VERSION_SUFFIX.exec(name);
+  return match ? Number(match[1]) : 0;
+}
+
+/**
+ * Groups templates that differ only by a `_vN` suffix (and share a language) into one entry.
+ * Versions are sorted newest first, so `latest` is the highest number.
+ * @param {ReturnType<typeof summarizeTemplate>[]} templates
+ * @returns {{ key: string, baseName: string, language: string, versions: object[], latest: object }[]}
+ */
+export function groupTemplatesByVersion(templates) {
+  const groups = new Map();
+  for (const template of templates) {
+    const baseName = template.name.replace(VERSION_SUFFIX, '');
+    const key = `${baseName}::${template.language}`;
+    if (!groups.has(key)) groups.set(key, { key, baseName, language: template.language, versions: [] });
+    groups.get(key).versions.push(template);
+  }
+  return [...groups.values()].map((group) => {
+    const versions = [...group.versions].sort((a, b) => getTemplateVersion(b.name) - getTemplateVersion(a.name));
+    return { ...group, versions, latest: versions[0] };
+  });
+}
+
+/** Template name without its `_vN` suffix. */
+export function getTemplateBaseName(name = '') {
+  return name.replace(VERSION_SUFFIX, '');
 }

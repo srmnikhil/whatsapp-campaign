@@ -3,7 +3,7 @@
 Verified against Meta's official docs on **18 Oct 2026**. Meta moved its docs from
 `/docs/whatsapp/...` to `/documentation/business-messaging/whatsapp/...`; all links below
 use the new paths. Every number here is configuration, not code: the app reads them from
-`web/src/config/defaults.js` (or Settings) so they can be changed without a code change.
+`src/config/defaults.js` (or Settings) so they can be changed without a code change.
 
 Base URL for links: `https://developers.facebook.com/documentation/business-messaging/whatsapp`
 

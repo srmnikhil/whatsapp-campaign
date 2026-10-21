@@ -17,6 +17,7 @@ const VALID = {
   wabaId: '222',
   phoneNumberId: '333',
   graphApiVersion: 'v26.0',
+  sendDelayMs: '200',
   backendUrl: 'https://api.example.com',
   backendApiKey: 'key-123456',
 };
@@ -67,6 +68,11 @@ describe('validateSettings', () => {
       backendUrl: 'http://api.example.com',
     });
     expect(Object.keys(errors).sort()).toEqual(['accessToken', 'backendUrl', 'graphApiVersion', 'wabaId']);
+  });
+
+  it('flags sendDelayMs below 200 ms', () => {
+    const errors = validateSettings({ ...VALID, sendDelayMs: '100' });
+    expect(errors.sendDelayMs).toBe('Delay cannot be less than 200 ms.');
   });
 
   it('allows http for localhost', () => {

@@ -16,6 +16,16 @@ function toLocalNumber(digits) {
 }
 
 /**
+ * Shows a stored 91XXXXXXXXXX number as the 10-digit mobile number. Display only.
+ * @param {unknown} phone
+ * @returns {string}
+ */
+export function formatPhoneDisplay(phone) {
+  const text = String(phone ?? '');
+  return /^91[6-9]\d{9}$/.test(text) ? text.slice(2) : text;
+}
+
+/**
  * Normalises an Indian mobile number to the WhatsApp format 91XXXXXXXXXX.
  * Accepts +91, 91, 0091 or a leading 0, with spaces, dashes, dots or brackets.
  * @param {unknown} input

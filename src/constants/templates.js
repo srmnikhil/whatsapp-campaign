@@ -8,6 +8,8 @@ export const TEMPLATE_STATUS = Object.freeze({
 
 export const TEMPLATE_CATEGORY = Object.freeze({
   MARKETING: 'MARKETING',
+  UTILITY: 'UTILITY',
+  AUTHENTICATION: 'AUTHENTICATION',
 });
 
 export const COMPONENT_TYPES = Object.freeze({
@@ -27,6 +29,7 @@ export const BUTTON_TYPES = Object.freeze({
   QUICK_REPLY: 'QUICK_REPLY',
   URL: 'URL',
   PHONE_NUMBER: 'PHONE_NUMBER',
+  COPY_CODE: 'COPY_CODE',
 });
 
 export const POSITIONAL_PARAMETER_FORMAT = 'POSITIONAL';

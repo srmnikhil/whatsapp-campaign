@@ -1,4 +1,3 @@
-import { useLogger } from '../context/LogContext.jsx';
 import { SENDER_PHASE } from '../hooks/useCampaignSender.js';
 
 export function Sidebar({
@@ -9,10 +8,8 @@ export function Sidebar({
   onClose,
   connectionInfo,
   sender,
-  onOpenLogs,
   contactsCount = 0,
 }) {
-  const { logs, errorCount } = useLogger();
   const isSending = sender?.phase === SENDER_PHASE.SENDING;
 
   const renderIcon = (id) => {
@@ -132,33 +129,6 @@ export function Sidebar({
           );
         })}
       </nav>
-
-      {/* Activity Logs Console Quick-Access Button */}
-      <div className="px-3 py-2 border-t border-white/10">
-        <button
-          type="button"
-          onClick={onOpenLogs}
-          className="flex w-full items-center justify-between rounded-xl bg-slate-900/80 hover:bg-slate-800/90 px-3.5 py-2.5 text-xs text-slate-300 border border-slate-700/60 transition-all hover:border-emerald-500/40 cursor-pointer"
-        >
-          <div className="flex items-center gap-2.5">
-            <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-            </span>
-            <span className="font-semibold text-slate-200">Terminal & Logs</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            {errorCount > 0 && (
-              <span className="rounded bg-rose-500/20 px-1.5 py-0.2 text-[10px] font-mono font-bold text-rose-400 border border-rose-500/30">
-                {errorCount} err
-              </span>
-            )}
-            <span className="rounded bg-slate-800 px-1.5 py-0.2 text-[10px] font-mono text-slate-400">
-              {logs.length}
-            </span>
-          </div>
-        </button>
-      </div>
 
       {/* Connection Status Card */}
       <div className="p-3 border-t border-white/10 bg-[#03111e]">

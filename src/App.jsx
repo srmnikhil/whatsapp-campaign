@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
-import { LogConsole } from './components/LogConsole.jsx';
 import { Sidebar } from './components/Sidebar.jsx';
 import { TopNavbar } from './components/TopNavbar.jsx';
+import { STORAGE_KEYS } from './constants/storageKeys.js';
 import { TAB_ITEMS, TABS } from './constants/tabs.js';
 import { LogProvider } from './context/LogContext.jsx';
 import { ContactsPage } from './features/contacts/ContactsPage.jsx';
@@ -24,12 +24,33 @@ function AppLayout() {
 
   const [activeTab, setActiveTab] = useState(TABS.SETTINGS);
   const [contactsImport, setContactsImport] = useState(null);
-  const [connectionInfo, setConnectionInfo] = useState(null);
+  const [connectionInfo, setConnectionInfo] = useState(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.CONNECTION_INFO);
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isLogsOpen, setIsLogsOpen] = useState(false);
+
+  const handleConnectionInfo = useCallback((info) => {
+    setConnectionInfo(info);
+    if (info) {
+      localStorage.setItem(STORAGE_KEYS.CONNECTION_INFO, JSON.stringify(info));
+    } else {
+      localStorage.removeItem(STORAGE_KEYS.CONNECTION_INFO);
+    }
+  }, []);
+
+  const handleClear = useCallback(() => {
+    clear();
+    setConnectionInfo(null);
+    localStorage.removeItem(STORAGE_KEYS.CONNECTION_INFO);
+  }, [clear]);
 
   // Campaign sender lives at App level so the progress survives tab switches
-  const { sender, startSend, stopSend } = useCampaignSender({
+  const { sender, startSend, stopSend, resetSender } = useCampaignSender({
     graphClient,
     backendClient,
     settings,
@@ -53,7 +74,7 @@ function AppLayout() {
   const validContactsCount = contactsImport?.table?.rows?.length ?? 0;
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
+    <div className="fixed inset-0 flex overflow-clip bg-slate-50">
       {/* Sidebar Navigation */}
       <Sidebar
         items={tabItems}
@@ -63,12 +84,11 @@ function AppLayout() {
         onClose={() => setIsSidebarOpen(false)}
         connectionInfo={connectionInfo}
         sender={sender}
-        onOpenLogs={() => setIsLogsOpen(true)}
         contactsCount={validContactsCount}
       />
 
       {/* Main Column */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-h-0 flex-1 flex-col overflow-clip">
         {/* Top Navbar */}
         <TopNavbar
           activeTab={activeTab}
@@ -76,19 +96,18 @@ function AppLayout() {
           connectionInfo={connectionInfo}
           sender={sender}
           onStopSend={stopSend}
-          onOpenLogs={() => setIsLogsOpen(true)}
         />
 
         {/* Content Area */}
-        <main className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 bg-slate-50">
+        <main id="app-scroll" className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-8 bg-slate-50">
           <div className="w-full max-w-[1750px] mx-auto">
             {activeTab === TABS.SETTINGS && (
               <SettingsPage
                 settings={settings}
                 revision={revision}
                 onSave={save}
-                onClear={clear}
-                onConnectionInfo={setConnectionInfo}
+                onClear={handleClear}
+                onConnectionInfo={handleConnectionInfo}
               />
             )}
             {activeTab === TABS.CONTACTS && (
@@ -105,6 +124,7 @@ function AppLayout() {
               <SendPage
                 settings={settings}
                 contactsImport={contactsImport}
+                onImportChange={setContactsImport}
                 templatesState={templatesState}
                 graphClient={graphClient}
                 backendClient={backendClient}
@@ -112,6 +132,7 @@ function AppLayout() {
                 sender={sender}
                 startSend={startSend}
                 stopSend={stopSend}
+                resetSender={resetSender}
                 onViewResults={handleViewResults}
                 onNavigateToSettings={() => setActiveTab(TABS.SETTINGS)}
                 onNavigateToContacts={() => setActiveTab(TABS.CONTACTS)}
@@ -137,9 +158,6 @@ function AppLayout() {
           </div>
         </main>
       </div>
-
-      {/* Real-time Logs Console Drawer */}
-      <LogConsole isOpen={isLogsOpen} onClose={() => setIsLogsOpen(false)} />
     </div>
   );
 }

@@ -76,6 +76,7 @@ describe('Templates page', () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole('button', { name: 'Templates' }));
+    await user.click(await screen.findByRole('button', { name: 'New Template' }));
 
     expect(await screen.findByText('Image upload needs the backend')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Submit for review' })).toBeDisabled();
@@ -92,6 +93,7 @@ describe('Templates page', () => {
     const user = userEvent.setup();
     render(<App />);
     await user.click(screen.getByRole('button', { name: 'Templates' }));
+    await user.click(await screen.findByRole('button', { name: 'New Template' }));
 
     await user.type(await screen.findByLabelText(/Template name/), 'big_sale');
     await user.click(screen.getByLabelText('No header'));

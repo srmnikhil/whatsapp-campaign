@@ -1,4 +1,5 @@
 import { Table } from '../../components/ui/Table.jsx';
+import { formatPhoneDisplay } from '../../lib/phone.js';
 
 const INVALID_COLUMNS = [
   { key: 'rowNumber', label: 'Row' },
@@ -32,7 +33,7 @@ export function ContactIssues({ invalid, duplicates }) {
   return (
     <div className="flex flex-col gap-3">
       <IssueSection title="Invalid rows (skipped)" columns={INVALID_COLUMNS} rows={invalid} />
-      <IssueSection title="Duplicate numbers (skipped)" columns={DUPLICATE_COLUMNS} rows={duplicates} />
+      <IssueSection title="Duplicate numbers (skipped)" columns={DUPLICATE_COLUMNS} rows={duplicates.map((d) => ({ ...d, phone: formatPhoneDisplay(d.phone) }))} />
     </div>
   );
 }

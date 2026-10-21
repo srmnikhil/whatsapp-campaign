@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button.jsx';
 import { TEMPLATE_STATUS } from '../../constants/templates.js';
 import { useAsyncAction } from '../../hooks/useAsyncAction.js';
 import { formatQuality, getQualityTone } from '../../lib/connectionInfo.js';
+import { Icon } from '../../components/Icon.jsx';
 
 const STATUS_TONES = Object.freeze({
   [TEMPLATE_STATUS.APPROVED]: 'success',
@@ -66,7 +67,7 @@ export function TemplateCard({ template, onRefresh, isSelected = false, onSelect
             </span>
           ) : (
             <span className="text-xs text-slate-400 group-hover:text-slate-600 transition-colors hidden sm:inline">
-              Click to preview →
+              Click to preview <Icon name="arrowRight" className="h-3 w-3 shrink-0" />
             </span>
           )}
         </div>
@@ -83,12 +84,12 @@ export function TemplateCard({ template, onRefresh, isSelected = false, onSelect
       <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
         {template.header?.format && template.header.format !== 'NONE' && (
           <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 font-medium text-slate-700">
-            {template.header.format === 'IMAGE' ? '📷 Image Header' : '📄 Text Header'}
+            {template.header.format === 'IMAGE' ? <><Icon name="image" className="h-3 w-3 shrink-0" /> Image Header</> : <><Icon name="fileText" className="h-3 w-3 shrink-0" /> Text Header</>}
           </span>
         )}
         {template.buttons && template.buttons.length > 0 && (
           <span className="inline-flex items-center gap-1 rounded-md bg-slate-100 px-2 py-0.5 font-medium text-slate-700">
-            🔘 {template.buttons.length} button{template.buttons.length > 1 ? 's' : ''}
+            <Icon name="cursorClick" className="h-3 w-3 shrink-0" /> {template.buttons.length} button{template.buttons.length > 1 ? 's' : ''}
           </span>
         )}
       </div>

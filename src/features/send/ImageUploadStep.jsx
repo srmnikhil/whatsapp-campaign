@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ErrorAlert } from '../../components/ErrorAlert.jsx';
 import { Alert } from '../../components/ui/Alert.jsx';
 import { Button } from '../../components/ui/Button.jsx';
@@ -7,23 +7,27 @@ import { TEMPLATE_IMAGE_LIMITS } from '../../config/defaults.js';
 import { HEADER_FORMATS } from '../../constants/templates.js';
 import { useAsyncAction } from '../../hooks/useAsyncAction.js';
 import { uploadCampaignImage } from '../../services/mediaApi.js';
+import { Icon } from '../../components/Icon.jsx';
 
 /**
  * Handles the optional image upload step.
- * - If the template has no image header: skips straight through (calls onDone(null)).
- * - If there's an image header: shows upload UI. The user can also skip (text-only fallback
- *   is not applicable for campaign sends—they need the media ID—but can proceed without one
- *   only if the header is optional or already uploaded).
+ * - If the template has no image header: immediately passes through without displaying anything.
  *
- * @param {{ template: object, graphClient: object, settings: object, onDone: (mediaId: string|null) => void }} props
+ * @param {{ template: object, graphClient: object, settings: object, onDone: (mediaId: string|null) => void, onBack?: () => void }} props
  */
-export function ImageUploadStep({ template, graphClient, settings, onDone }) {
+export function ImageUploadStep({ template, graphClient, settings, onDone, onBack }) {
   const fileRef = useRef(null);
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [fileError, setFileError] = useState(null);
 
-  const hasImageHeader = template.header.format === HEADER_FORMATS.IMAGE;
+  const hasImageHeader = template?.header?.format === HEADER_FORMATS.IMAGE;
+
+  useEffect(() => {
+    if (!hasImageHeader) {
+      onDone(null);
+    }
+  }, [hasImageHeader, onDone]);
 
   const { run, isLoading, error, data: mediaId } = useAsyncAction(async (signal) => {
     if (!file) throw new Error('Select an image first.');
@@ -47,18 +51,9 @@ export function ImageUploadStep({ template, graphClient, settings, onDone }) {
     setPreviewUrl(URL.createObjectURL(picked));
   }
 
-  // Template has no image header — skip this step
+  // Template has no image header — do not show any placeholder/notice, skip immediately
   if (!hasImageHeader) {
-    return (
-      <Card title="Image header">
-        <Alert tone="info">
-          This template has no image header. Proceeding without an image.
-        </Alert>
-        <div className="mt-4">
-          <Button onClick={() => onDone(null)}>Continue →</Button>
-        </div>
-      </Card>
-    );
+    return null;
   }
 
   // Already uploaded — show confirmation
@@ -69,7 +64,7 @@ export function ImageUploadStep({ template, graphClient, settings, onDone }) {
           Media ID: <code className="font-mono text-xs">{mediaId}</code>. This ID will be used for every message in the campaign.
         </Alert>
         <div className="mt-4">
-          <Button onClick={() => onDone(mediaId)}>Continue →</Button>
+          <Button onClick={() => onDone(mediaId)}>Continue <Icon name="arrowRight" /></Button>
         </div>
       </Card>
     );
@@ -116,6 +111,11 @@ export function ImageUploadStep({ template, graphClient, settings, onDone }) {
         {error && <ErrorAlert error={error} />}
 
         <div className="flex gap-3 flex-wrap">
+          {onBack && (
+            <Button variant="secondary" onClick={onBack} disabled={isLoading}>
+              <Icon name="arrowLeft" /> Back to templates
+            </Button>
+          )}
           <Button
             onClick={() => run()}
             disabled={!file || isLoading}

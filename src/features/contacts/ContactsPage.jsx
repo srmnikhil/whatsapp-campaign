@@ -2,7 +2,7 @@ import { useCallback, useMemo } from 'react';
 import { Alert } from '../../components/ui/Alert.jsx';
 import { Button } from '../../components/ui/Button.jsx';
 import { Card } from '../../components/ui/Card.jsx';
-import { CONTACT_IMPORT_LIMITS } from '../../config/defaults.js';
+import { CONTACT_IMPORT_LIMITS, MAX_UNIQUE_USERS_LIMIT } from '../../config/defaults.js';
 import { buildContacts, guessColumns } from '../../lib/contacts.js';
 import { ColumnMapping } from './ColumnMapping.jsx';
 import { ContactIssues } from './ContactIssues.jsx';
@@ -20,6 +20,13 @@ function ImportResult({ importState, onImportChange }) {
       <div className="flex flex-col gap-5">
         <ColumnMapping headers={table.headers} mapping={mapping} onChange={(next) => onImportChange({ ...importState, mapping: next })} />
         <ImportSummary counts={result.counts} />
+        {result.counts.valid > MAX_UNIQUE_USERS_LIMIT && (
+          <Alert tone="error" title="Unique user limit exceeded">
+            This sheet contains <strong>{result.counts.valid.toLocaleString()}</strong> unique contacts,
+            which exceeds the maximum limit of <strong>{MAX_UNIQUE_USERS_LIMIT.toLocaleString()}</strong> unique users.
+            WhatsApp limits broadcast campaigns to 2,000 unique recipients. You must reduce this list to 2,000 or fewer contacts before sending.
+          </Alert>
+        )}
         {result.counts.emptyNames > 0 && (
           <Alert tone="warning" title="Empty names">
             {result.counts.emptyNames === 1

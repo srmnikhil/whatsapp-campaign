@@ -1,5 +1,4 @@
 import { SENDER_PHASE } from '../hooks/useCampaignSender.js';
-import { useLogger } from '../context/LogContext.jsx';
 
 const TITLES = {
   settings: { title: 'Settings & Credentials', subtitle: 'Manage Meta Cloud API keys, Webhooks, and test sends' },
@@ -16,9 +15,7 @@ export function TopNavbar({
   connectionInfo,
   sender,
   onStopSend,
-  onOpenLogs,
 }) {
-  const { logs, errorCount } = useLogger();
   const pageInfo = TITLES[activeTab] ?? { title: 'Campaigns', subtitle: 'WhatsApp Marketing Broadcasts' };
   const isSending = sender?.phase === SENDER_PHASE.SENDING;
   const pct = sender?.total > 0 ? Math.round(((sender.sent + sender.failed) / sender.total) * 100) : 0;
@@ -91,27 +88,6 @@ export function TopNavbar({
             <span className="font-medium truncate max-w-[120px]">{connectionInfo.displayName ? `Account: ${connectionInfo.displayName}` : 'Connected'}</span>
           </div>
         )}
-
-        {/* Logs Drawer Toggle Button */}
-        <button
-          type="button"
-          onClick={onOpenLogs}
-          className="flex items-center gap-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white px-3 py-1.5 text-xs font-semibold shadow-xs transition-all cursor-pointer"
-          title="Open real-time activity and network logs console"
-        >
-          <svg className="h-3.5 w-3.5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-          </svg>
-          <span className="hidden sm:inline">Logs</span>
-          <span className="rounded-full bg-slate-800 px-1.5 py-0.2 text-[10px] font-mono text-emerald-300">
-            {logs.length}
-          </span>
-          {errorCount > 0 && (
-            <span className="rounded-full bg-rose-500 px-1.5 py-0.2 text-[9px] font-mono font-bold text-white">
-              {errorCount}
-            </span>
-          )}
-        </button>
       </div>
     </header>
   );

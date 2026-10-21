@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeIndianPhone } from './phone.js';
+import { formatPhoneDisplay, normalizeIndianPhone } from './phone.js';
 
 describe('normalizeIndianPhone', () => {
   it.each([
@@ -27,5 +27,17 @@ describe('normalizeIndianPhone', () => {
     [{}, 'object'],
   ])('rejects %s (%s)', (input) => {
     expect(normalizeIndianPhone(input)).toBeNull();
+  });
+});
+
+describe('formatPhoneDisplay', () => {
+  it('drops the 91 prefix from stored Indian numbers', () => {
+    expect(formatPhoneDisplay('919528465756')).toBe('9528465756');
+  });
+
+  it('leaves anything else unchanged', () => {
+    expect(formatPhoneDisplay('9528465756')).toBe('9528465756');
+    expect(formatPhoneDisplay('')).toBe('');
+    expect(formatPhoneDisplay(null)).toBe('');
   });
 });

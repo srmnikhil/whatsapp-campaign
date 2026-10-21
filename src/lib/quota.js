@@ -7,7 +7,16 @@ import { TIER_LIMITS, TRANSACTIONAL_RESERVE } from '../config/defaults.js';
  */
 export function tierToLimit(tier) {
   if (!tier) return null;
-  return TIER_LIMITS[tier] ?? null;
+  if (tier in TIER_LIMITS) return TIER_LIMITS[tier];
+  // Meta also reports tiers we don't list (e.g. TIER_1K), so read the number from the name.
+  const match = /^TIER_(\d+)(K|M)$/.exec(tier);
+  if (!match) return null;
+  return Number(match[1]) * (match[2] === 'M' ? 1_000_000 : 1_000);
+}
+
+/** True when the tier is Unlimited or one we can turn into a number. */
+export function isTierKnown(tier) {
+  return Boolean(tier) && (tier === 'TIER_UNLIMITED' || tierToLimit(tier) !== null);
 }
 
 /**

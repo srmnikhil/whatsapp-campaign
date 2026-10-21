@@ -8,6 +8,7 @@ import { SEND_REQUIRED_KEYS } from '../../constants/settingsFields.js';
 import { getMissingKeys } from '../../lib/settings.js';
 import { listCampaigns } from '../../services/backendApi.js';
 import { MissingSettingsAlert } from '../settings/MissingSettingsAlert.jsx';
+import { Icon } from '../../components/Icon.jsx';
 
 const CAMPAIGN_STATUS_TONES = Object.freeze({
   sending: 'warning',
@@ -37,41 +38,43 @@ export function HistoryPage({ settings, backendClient, onViewResults, onNavigate
   const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
-    if (!backendClient) return;
-    setLoading(true);
     setError(null);
+    if (!backendClient?.request || !settings?.backendUrl) {
+      try {
+        const local = JSON.parse(localStorage.getItem('garaaz-wa-campaigns.campaigns') || '[]');
+        setCampaigns(local);
+      } catch {
+        setCampaigns([]);
+      }
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
     try {
       const data = await listCampaigns(backendClient);
-      setCampaigns(Array.isArray(data) ? data : []);
+      let local = [];
+      try {
+        local = JSON.parse(localStorage.getItem('garaaz-wa-campaigns.campaigns') || '[]');
+      } catch {}
+      const existingIds = new Set((Array.isArray(data) ? data : []).map((c) => c.id));
+      const combined = [...local.filter((c) => !existingIds.has(c.id)), ...(Array.isArray(data) ? data : [])];
+      setCampaigns(combined);
     } catch (err) {
-      setError(err);
+      try {
+        const local = JSON.parse(localStorage.getItem('garaaz-wa-campaigns.campaigns') || '[]');
+        setCampaigns(local);
+      } catch {
+        setError(err);
+      }
     } finally {
       setLoading(false);
     }
-  }, [backendClient]);
+  }, [backendClient, settings?.backendUrl]);
 
   useEffect(() => {
-    let ignore = false;
-    if (!backendClient) return;
-
-    listCampaigns(backendClient)
-      .then((data) => {
-        if (!ignore) {
-          setCampaigns(Array.isArray(data) ? data : []);
-          setLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (!ignore) {
-          setError(err);
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      ignore = true;
-    };
-  }, [backendClient]);
+    load();
+  }, [load]);
 
   if (missingKeys.length > 0) return <MissingSettingsAlert missingKeys={missingKeys} onNavigateToSettings={onNavigateToSettings} />;
 
@@ -83,7 +86,7 @@ export function HistoryPage({ settings, backendClient, onViewResults, onNavigate
       >
         <div className="flex justify-end mb-4">
           <Button variant="secondary" onClick={load} disabled={loading}>
-            {loading ? 'Refreshing…' : '↻ Refresh'}
+            {loading ? 'Refreshing…' : <><Icon name="refresh" /> Refresh</>}
           </Button>
         </div>
 

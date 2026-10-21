@@ -10,10 +10,11 @@ import { POLL_INTERVAL_MS } from '../../config/defaults.js';
 import { ASYNC_STATUS } from '../../constants/asyncStatus.js';
 import { SEND_REQUIRED_KEYS, TEMPLATE_REQUIRED_KEYS } from '../../constants/settingsFields.js';
 import { getMissingKeys } from '../../lib/settings.js';
+import { formatPhoneDisplay } from '../../lib/phone.js';
 import { downloadCampaignCsv, getCampaign, listRecipients } from '../../services/backendApi.js';
 import { MissingSettingsAlert } from '../settings/MissingSettingsAlert.jsx';
 import { CampaignMessage } from './CampaignMessage.jsx';
-import { LogConsole } from '../../components/LogConsole.jsx';
+import { Icon } from '../../components/Icon.jsx';
 
 const CAMPAIGN_STATUS_TONES = Object.freeze({
   sending: 'warning',
@@ -91,9 +92,28 @@ export function ResultsPage({ settings, backendClient, templatesState, campaignI
   }
 
   const fetchCampaign = useCallback(async (id) => {
-    if (!id || !backendClient) return;
+    if (!id) return;
     setLoading(true);
     setError(null);
+
+    if (!backendClient?.request || !settings?.backendUrl) {
+      try {
+        const local = JSON.parse(localStorage.getItem('garaaz-wa-campaigns.campaigns') || '[]');
+        const found = local.find((c) => c.id === id);
+        if (found) {
+          setCampaign(found);
+          setRecipients(found.rows || []);
+        } else {
+          setError(new Error(`Campaign "${id}" not found in local browser storage.`));
+        }
+      } catch (err) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
     try {
       const [data, rows] = await Promise.all([
         getCampaign(backendClient, id),
@@ -102,15 +122,29 @@ export function ResultsPage({ settings, backendClient, templatesState, campaignI
       setCampaign(data);
       setRecipients(Array.isArray(rows) ? rows : []);
     } catch (err) {
+      try {
+        const local = JSON.parse(localStorage.getItem('garaaz-wa-campaigns.campaigns') || '[]');
+        const found = local.find((c) => c.id === id);
+        if (found) {
+          setCampaign(found);
+          setRecipients(found.rows || []);
+          return;
+        }
+      } catch {}
       setError(err);
     } finally {
       setLoading(false);
     }
-  }, [backendClient]);
+  }, [backendClient, settings?.backendUrl]);
 
-  // Poll while the campaign is still sending
+  // Poll while the campaign is still sending (if backend is connected)
   useEffect(() => {
-    if (!campaignId || !backendClient) return;
+    if (!campaignId) return;
+    if (!backendClient?.request || !settings?.backendUrl) {
+      fetchCampaign(campaignId);
+      return;
+    }
+
     let ignore = false;
 
     Promise.all([getCampaign(backendClient, campaignId), listRecipients(backendClient, campaignId)])
@@ -139,7 +173,7 @@ export function ResultsPage({ settings, backendClient, templatesState, campaignI
       ignore = true;
       clearInterval(pollRef.current);
     };
-  }, [campaignId, backendClient]);
+  }, [campaignId, backendClient, settings?.backendUrl, fetchCampaign]);
 
   // Stop polling when campaign is done
   useEffect(() => {
@@ -161,6 +195,33 @@ export function ResultsPage({ settings, backendClient, templatesState, campaignI
 
   async function exportCsv() {
     setError(null);
+    if (!settings?.backendUrl || !backendClient?.request) {
+      if (!recipients || recipients.length === 0) {
+        setError(new Error('No recipient data available to export.'));
+        return;
+      }
+      const header = ['Phone', 'Name', 'Status', 'Message ID', 'Error'];
+      const csvRows = [header.join(',')];
+      recipients.forEach((r) => {
+        const phone = `"${(r.phone || '').replace(/"/g, '""')}"`;
+        const name = `"${(r.name || '').replace(/"/g, '""')}"`;
+        const status = `"${(r.state || r.status || '').replace(/"/g, '""')}"`;
+        const wamid = `"${(r.wamid || '').replace(/"/g, '""')}"`;
+        const error = `"${(r.error?.message || r.error || '').replace(/"/g, '""')}"`;
+        csvRows.push([phone, name, status, wamid, error].join(','));
+      });
+      const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `campaign_${campaignId || 'results'}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      return;
+    }
+
     try {
       await downloadCampaignCsv({
         backendUrl: settings.backendUrl,
@@ -202,10 +263,10 @@ export function ResultsPage({ settings, backendClient, templatesState, campaignI
             onClick={() => fetchCampaign(campaignId)}
             disabled={!campaignId || loading}
           >
-            ↻ Refresh
+            <Icon name="refresh" /> Refresh
           </Button>
           <Button variant="secondary" onClick={exportCsv} disabled={!campaignId || loading}>
-            ↓ Export CSV
+            <Icon name="download" /> Export CSV
           </Button>
         </div>
       </Card>
@@ -251,7 +312,7 @@ function formatWhen(value) {
 function toRecipientRow(recipient) {
   return {
     name: recipient.name || '—',
-    phone: recipient.phone,
+    phone: formatPhoneDisplay(recipient.phone),
     state: (
       <Badge tone={RECIPIENT_STATE_TONES[recipient.state] ?? 'neutral'}>
         {recipient.state || '—'}
@@ -354,7 +415,7 @@ function CampaignResults({ campaign, recipients, templatesState, canLoadTemplate
     { value: 'not_sent', label: `Not sent (${filterCounts.not_sent})` },
   ];
 
-  const [activeView, setActiveView] = useState('overview'); // 'overview' | 'recipients' | 'logs'
+  const [activeView, setActiveView] = useState('overview'); // 'overview' | 'recipients'
 
   return (
     <div className="flex flex-col gap-5">
@@ -382,35 +443,24 @@ function CampaignResults({ campaign, recipients, templatesState, canLoadTemplate
           <button
             type="button"
             onClick={() => setActiveView('overview')}
-            className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
               activeView === 'overview'
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            📱 Mobile Screen & Stats
+            <Icon name="phone" /> Mobile Screen &amp; Stats
           </button>
           <button
             type="button"
             onClick={() => setActiveView('recipients')}
-            className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
               activeView === 'recipients'
                 ? 'bg-white text-slate-900 shadow-xs'
                 : 'text-slate-600 hover:text-slate-900'
             }`}
           >
-            👥 Recipients ({recipients.length.toLocaleString()})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveView('logs')}
-            className={`rounded-lg px-3.5 py-1.5 text-xs font-semibold transition-all ${
-              activeView === 'logs'
-                ? 'bg-white text-slate-900 shadow-xs'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            ⚡ Delivery Logs
+            <Icon name="users" /> Recipients ({recipients.length.toLocaleString()})
           </button>
         </div>
       </div>
@@ -461,7 +511,7 @@ function CampaignResults({ campaign, recipients, templatesState, canLoadTemplate
                   <p className="text-xs text-slate-500">View individual sent, delivered, read, and failed timestamps</p>
                 </div>
                 <Button onClick={() => setActiveView('recipients')}>
-                  View Recipients Table →
+                  View Recipients Table <Icon name="arrowRight" />
                 </Button>
               </div>
             </Card>
@@ -561,13 +611,6 @@ function CampaignResults({ campaign, recipients, templatesState, canLoadTemplate
             </div>
           )}
         </Card>
-      )}
-
-      {/* VIEW 3: Live Webhook & Activity Logs */}
-      {activeView === 'logs' && (
-        <div className="h-[600px]">
-          <LogConsole inline />
-        </div>
       )}
     </div>
   );

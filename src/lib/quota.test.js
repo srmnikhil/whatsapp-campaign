@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { availableQuota, checkQuota, tierToLimit } from './quota.js';
+import { availableQuota, checkQuota, isTierKnown, tierToLimit } from './quota.js';
 
 describe('quota calculation', () => {
   it('converts known tiers to limits', () => {
@@ -9,6 +9,16 @@ describe('quota calculation', () => {
     expect(tierToLimit('TIER_100K')).toBe(100000);
     expect(tierToLimit('TIER_UNLIMITED')).toBe(null);
     expect(tierToLimit(null)).toBe(null);
+  });
+
+  it('reads tiers that are not in the table', () => {
+    expect(tierToLimit('TIER_1K')).toBe(1000);
+    expect(tierToLimit('TIER_50K')).toBe(50000);
+    expect(tierToLimit('garbage')).toBe(null);
+    expect(isTierKnown('TIER_1K')).toBe(true);
+    expect(isTierKnown('TIER_UNLIMITED')).toBe(true);
+    expect(isTierKnown('')).toBe(false);
+    expect(isTierKnown('garbage')).toBe(false);
   });
 
   it('calculates available quota with default reserve', () => {

@@ -1,6 +1,6 @@
 # Progress — WhatsApp Campaigns v1
 
-Last updated: 18 Oct 2026. Plan: [`plan-v1.md`](./plan-v1.md) (approved, revision 4).
+Last updated: 18 Oct 2026. Plan: [`docs/plan-v1.md`](./plan-v1.md) (approved, revision 4).
 
 **Status:** steps 1–6 are done and have been run on the test number. Step 4's backend is `2af6403f` on `garaaz-backend` branch `feat/whatsapp-campaigns` (not pushed). The send, results and history UI is on `garaaz-wa-campaigns` `main` (not pushed): confirm-screen fix `f63a76d`, per-recipient Results table with separate state and last status columns, status filtering, and pagination. A sheet of 4 test contacts was sent; stats landed (2 delivered, 1 of those read, 2 failed with `131049`).
 
@@ -10,7 +10,7 @@ Last updated: 18 Oct 2026. Plan: [`plan-v1.md`](./plan-v1.md) (approved, revisio
 
 ### Step 1: Scaffold, Settings, Test connection, test send
 
-- `web/` uses React 19, Vite 8 and Tailwind 4, in JavaScript only. Theme tokens mirror `garaaz-web`.
+- The app (repo root) uses React 19, Vite 8 and Tailwind 4, in JavaScript only. Theme tokens mirror `garaaz-web`.
 - **Settings:**
   - Fields: token, App ID, WABA ID, Phone Number ID, Graph API version, backend URL and backend API key.
   - They're stored in this browser's localStorage only.
@@ -127,7 +127,7 @@ Last updated: 18 Oct 2026. Plan: [`plan-v1.md`](./plan-v1.md) (approved, revisio
 ### Step 7: Small fixes (Group C complete)
 
 - **Webhook verify token redaction:** `LoggerService` in `garaaz-backend` (`18eb8ed4`) redacts `hub.verify_token` in URLs, query strings, and log context, strictly scoped to requests targeting `/whatsapp-campaigns/webhook`. Unit tests added in `wa-utils.spec.ts`.
-- **Contacts import empty-name warning:** `buildContacts` in `web/src/lib/contacts.js` counts rows with an empty name. `ContactsPage` renders an Alert informing the user how many contacts have no name and will get the fallback `"there"` for `{{1}}`. Unit tests updated in `contacts.test.js`.
+- **Contacts import empty-name warning:** `buildContacts` in `src/lib/contacts.js` counts rows with an empty name. `ContactsPage` renders an Alert informing the user how many contacts have no name and will get the fallback `"there"` for `{{1}}`. Unit tests updated in `contacts.test.js`.
 
 ---
 
@@ -242,14 +242,14 @@ allows any origin, so no CORS change is needed.
 Committed as `0c4bc42` (`feat: add campaign send, results and history`) on `main`. Not pushed. It implements the step 5 send flow and the step 6 results and history pages. It was written by another session and then run in this test.
 
 **New files:**
-- `web/src/features/send/` — `SendPage`, `TemplateSelector`, `PreviewConfirm`, `ImageUploadStep`, `SendProgress`
-- `web/src/features/results/ResultsPage.jsx`
-- `web/src/features/history/HistoryPage.jsx`
-- `web/src/hooks/useCampaignSender.js`, `web/src/hooks/useBackendClient.js`
-- `web/src/services/backendApi.js`, `web/src/services/mediaApi.js`
-- `web/src/lib/quota.js`, `web/src/lib/quota.test.js`, `web/src/lib/payloadBuilder.test.js`
+- `src/features/send/` — `SendPage`, `TemplateSelector`, `PreviewConfirm`, `ImageUploadStep`, `SendProgress`
+- `src/features/results/ResultsPage.jsx`
+- `src/features/history/HistoryPage.jsx`
+- `src/hooks/useCampaignSender.js`, `src/hooks/useBackendClient.js`
+- `src/services/backendApi.js`, `src/services/mediaApi.js`
+- `src/lib/quota.js`, `src/lib/quota.test.js`, `src/lib/payloadBuilder.test.js`
 
-**Modified files:** `web/src/App.jsx` (Send, Results and History tabs; send state kept above the tabs), `web/src/config/defaults.js`, `web/src/constants/tabs.js`, `web/src/constants/settingsFields.js`, `web/src/features/settings/SettingsPage.jsx`, `web/src/features/settings/ConnectionCard.jsx`, `web/src/lib/payloadBuilder.js`, `web/src/services/graphClient.js`, and this file.
+**Modified files:** `src/App.jsx` (Send, Results and History tabs; send state kept above the tabs), `src/config/defaults.js`, `src/constants/tabs.js`, `src/constants/settingsFields.js`, `src/features/settings/SettingsPage.jsx`, `src/features/settings/ConnectionCard.jsx`, `src/lib/payloadBuilder.js`, `src/services/graphClient.js`, and this file.
 
 The same session added the "Step 5" and "Step 6" sections above. The live run is in "Tested on 18 Oct 2026".
 

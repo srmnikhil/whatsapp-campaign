@@ -58,4 +58,59 @@ describe('buildTemplateCreatePayload', () => {
     const payload = buildTemplateCreatePayload({ ...VALID, headerFormat: 'NONE', bodyText: 'Big sale today.', footerText: '', includeStopButton: false });
     expect(payload.components).toEqual([{ type: 'BODY', text: 'Big sale today.' }]);
   });
+
+  it('builds a template with text header, utility category, and CTA buttons (URL and Phone)', () => {
+    const ctaDraft = {
+      name: 'order_status_update',
+      category: 'UTILITY',
+      language: 'en',
+      headerFormat: 'TEXT',
+      headerText: 'Order Dispatched',
+      bodyText: 'Hi {{1}}, your order has shipped!',
+      sampleName: 'Vikram',
+      footerText: 'Garaaz Logistics',
+      buttonType: 'CTA',
+      ctaButtons: [
+        { type: 'URL', text: 'Track Order', url: 'https://garaaz.com/track' },
+        { type: 'PHONE_NUMBER', text: 'Call Us', phoneNumber: '+919257039785' },
+      ],
+    };
+
+    expect(validateTemplateDraft(ctaDraft)).toEqual({});
+    expect(buildTemplateCreatePayload(ctaDraft)).toEqual({
+      name: 'order_status_update',
+      language: 'en',
+      category: 'UTILITY',
+      parameter_format: 'POSITIONAL',
+      components: [
+        { type: 'HEADER', format: 'TEXT', text: 'Order Dispatched' },
+        { type: 'BODY', text: 'Hi {{1}}, your order has shipped!', example: { body_text: [['Vikram']] } },
+        { type: 'FOOTER', text: 'Garaaz Logistics' },
+        {
+          type: 'BUTTONS',
+          buttons: [
+            { type: 'URL', text: 'Track Order', url: 'https://garaaz.com/track' },
+            { type: 'PHONE_NUMBER', text: 'Call Us', phone_number: '+919257039785' },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('builds a template with COPY_CODE button', () => {
+    const copyDraft = {
+      name: 'promo_coupon',
+      category: 'MARKETING',
+      language: 'en',
+      headerFormat: 'NONE',
+      bodyText: 'Use code below for 25% discount.',
+      buttonType: 'CTA',
+      ctaButtons: [{ type: 'COPY_CODE', text: 'Copy Coupon', example: 'SALE25' }],
+    };
+
+    expect(buildTemplateCreatePayload(copyDraft).components).toContainEqual({
+      type: 'BUTTONS',
+      buttons: [{ type: 'COPY_CODE', example: 'SALE25' }],
+    });
+  });
 });

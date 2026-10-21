@@ -19,6 +19,7 @@ export async function fetchPhoneNumberInfo(client, phoneNumberId, { signal } = {
   return {
     verifiedName: data.verified_name ?? '',
     displayPhoneNumber: data.display_phone_number ?? '',
+    displayName: data.verified_name || data.display_phone_number || '',
     qualityRating: data.quality_rating ?? '',
     messagingLimitTier: data.whatsapp_business_manager_messaging_limit ?? '',
     nameStatus: data.name_status ?? '',

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ASYNC_STATUS } from '../constants/asyncStatus.js';
 import { isMarketing, sortTemplates, summarizeTemplate, upsertTemplate } from '../lib/templates.js';
-import { getTemplate, listTemplates } from '../services/templatesApi.js';
+import { deleteTemplate, getTemplate, listTemplates } from '../services/templatesApi.js';
 import { useGraphClient } from './useGraphClient.js';
 
 const IDLE_STORE = Object.freeze({ owner: null, status: ASYNC_STATUS.IDLE, templates: [], error: null });
@@ -45,15 +45,29 @@ export function useTemplates(settings) {
     [client, owner],
   );
 
+  const deleteOne = useCallback(
+    async (templateName, signal) => {
+      await deleteTemplate(client, wabaId, templateName, { signal });
+      setStore((previous) => (previous.owner === owner ? {
+        ...previous,
+        templates: previous.templates.filter((t) => t.name !== templateName),
+      } : previous));
+    },
+    [client, wabaId, owner],
+  );
+
   const marketing = useMemo(() => sortTemplates(current.templates.filter(isMarketing)), [current.templates]);
+  const allTemplates = useMemo(() => sortTemplates(current.templates), [current.templates]);
 
   return {
     status: current.status,
     error: current.error,
     isLoading: current.status === ASYNC_STATUS.LOADING,
     templates: marketing,
+    allTemplates,
     hiddenCount: current.templates.length - marketing.length,
     load,
     refreshOne,
+    deleteOne,
   };
 }

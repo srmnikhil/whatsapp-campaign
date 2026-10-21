@@ -20,10 +20,10 @@ export function TemplatePreview({
   footerText,
   buttons = [],
   name,
-  businessName = 'Garaaz Offers',
+  businessName = 'Garaaz Notification',
   defaultMode = 'phone',
 }) {
-  const [mode, setMode] = useState(defaultMode); // 'phone' | 'wide'
+  const [mode] = useState(defaultMode); // 'phone' | 'wide'
   const body = name ? bodyText?.split(NAME_VARIABLE).join(name) : bodyText;
   const isImage = header?.format === HEADER_FORMATS.IMAGE;
   const isTextHeader = header?.format === HEADER_FORMATS.TEXT;
@@ -32,77 +32,34 @@ export function TemplatePreview({
 
   return (
     <div className="flex flex-col items-center w-full" aria-label="Message preview">
-      {/* Mode switcher bar */}
-      <div className="mb-3 flex items-center justify-between w-full max-w-[390px] px-1">
-        <span className="text-xs font-semibold text-slate-500 flex items-center gap-1.5">
-          <svg className="h-4 w-4 text-[#25D366]" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm.01 16.67c-1.5 0-2.96-.4-4.24-1.16l-.3-.18-3.12.82.83-3.04-.2-.32c-.84-1.34-1.28-2.89-1.28-4.48 0-4.63 3.78-8.41 8.41-8.41 2.25 0 4.36.88 5.95 2.47a8.36 8.36 0 0 1 2.46 5.94c0 4.63-3.77 8.41-8.41 8.41z" />
-          </svg>
-          <span>WhatsApp Live Screen</span>
-        </span>
-
-        <div className="flex items-center rounded-lg bg-slate-200/80 p-0.5 text-[11px] font-medium text-slate-600">
-          <button
-            type="button"
-            onClick={() => setMode('phone')}
-            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-all ${
-              !isWide ? 'bg-white text-slate-900 font-semibold shadow-2xs' : 'text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            </svg>
-            <span>Phone</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('wide')}
-            className={`flex items-center gap-1.5 rounded-md px-2.5 py-1 transition-all ${
-              isWide ? 'bg-white text-slate-900 font-semibold shadow-2xs' : 'text-slate-500 hover:text-slate-900'
-            }`}
-          >
-            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-            </svg>
-            <span>Wide</span>
-          </button>
-        </div>
-      </div>
-
       {/* Screen Container */}
       <div
         className={`relative select-none transition-all duration-300 ${
           isWide
             ? 'w-full rounded-2xl border-2 border-slate-700/60 bg-slate-900 p-2 shadow-2xl'
-            : 'w-full max-w-[390px] rounded-[46px] border-[5px] border-slate-700/80 bg-slate-900 p-2.5 shadow-2xl shadow-slate-950/50 ring-1 ring-white/15'
+            : 'aspect-[9/16] h-[min(calc(100vh-12rem),640px)] max-w-full rounded-[2.4rem] border-[3px] border-slate-700 bg-black p-1.5 shadow-2xl shadow-slate-950/40'
         }`}
       >
         {/* Side physical buttons (simulated on chassis in phone mode) */}
         {!isWide && (
           <>
-            <div className="absolute -left-[9px] top-24 h-11 w-1 rounded-l-md bg-slate-600" />
-            <div className="absolute -left-[9px] top-38 h-11 w-1 rounded-l-md bg-slate-600" />
-            <div className="absolute -right-[9px] top-32 h-16 w-1 rounded-r-md bg-slate-600" />
+            <div className="absolute -right-[6px] top-24 h-10 w-[3px] rounded-r-md bg-slate-600" />
+            <div className="absolute -right-[6px] top-40 h-14 w-[3px] rounded-r-md bg-slate-600" />
           </>
         )}
 
         {/* Inner Screen Display */}
         <div className={`relative flex flex-col overflow-hidden bg-[#EFEAE2] ${
-          isWide ? 'min-h-[500px] rounded-xl' : 'min-h-[580px] rounded-[38px]'
+          isWide ? 'min-h-[500px] rounded-xl' : 'h-full rounded-[2rem]'
         }`}>
           {/* Dynamic Island & Phone Status Bar */}
           <div className="relative z-20 flex items-center justify-between bg-[#075E54] px-6 pt-3 pb-1.5 text-white">
             <span className="text-[12px] font-semibold tracking-tight">9:41</span>
-            {/* Dynamic Island pill */}
+            {/* Punch-hole camera */}
             {!isWide && (
-              <div className="absolute left-1/2 top-2 h-4.5 w-24 -translate-x-1/2 rounded-full bg-black flex items-center justify-end pr-2.5">
-                <span className="h-2 w-2 rounded-full bg-slate-900 border border-slate-700/50" />
-              </div>
+              <div className="absolute left-1/2 top-2 h-2.5 w-2.5 -translate-x-1/2 rounded-full bg-black ring-1 ring-slate-700" />
             )}
             <div className="flex items-center gap-1.5 text-white">
-              <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 3c-4.97 0-9 4.03-9 9 0 2.12.74 4.07 1.97 5.61L4.35 21l3.52-.92C9.37 20.66 10.65 21 12 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm0 16.5c-1.25 0-2.43-.33-3.46-.92l-.25-.15-2.58.68.69-2.51-.16-.26A7.447 7.447 0 0 1 4.5 12C4.5 7.86 7.86 4.5 12 4.5s7.5 3.36 7.5 7.5-3.36 7.5-7.5 7.5z" />
-              </svg>
               <span className="text-[10px] font-bold">5G</span>
               <div className="flex h-2.5 w-5 items-center rounded-xs border border-white/80 p-0.5">
                 <div className="h-full w-full rounded-2xs bg-emerald-400" />
@@ -160,7 +117,7 @@ export function TemplatePreview({
 
           {/* WhatsApp Chat Canvas */}
           <div
-            className="relative flex-1 overflow-y-auto px-4 py-3.5 space-y-3"
+            className="relative min-h-0 flex-1 overflow-y-auto px-3 py-3 space-y-3"
             style={{
               backgroundColor: '#efeae2',
               backgroundImage: `radial-gradient(#c8c2b7 0.75px, transparent 0.75px), radial-gradient(#c8c2b7 0.75px, #efeae2 0.75px)`,
@@ -237,15 +194,31 @@ export function TemplatePreview({
               {/* Action Buttons */}
               {buttons.length > 0 && (
                 <div className="divide-y divide-slate-100 border-t border-slate-100 bg-white">
-                  {buttons.map((button) => (
+                  {buttons.map((button, idx) => (
                     <div
-                      key={button.text}
+                      key={idx}
                       className="flex items-center justify-center gap-2 py-2.5 px-3 text-center text-xs font-semibold text-[#00A884] hover:bg-slate-50 transition-colors"
                     >
-                      <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-                      </svg>
-                      <span>{button.text}</span>
+                      {button.type === 'URL' ? (
+                        <svg className="h-3.5 w-3.5 shrink-0 text-[#00A884]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      ) : button.type === 'PHONE_NUMBER' ? (
+                        <svg className="h-3.5 w-3.5 shrink-0 text-[#00A884]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                      ) : button.type === 'COPY_CODE' ? (
+                        <svg className="h-3.5 w-3.5 shrink-0 text-[#00A884]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                      ) : (
+                        <svg className="h-3.5 w-3.5 shrink-0 text-[#00A884]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                        </svg>
+                      )}
+                      <span>
+                        {button.text || (button.type === 'COPY_CODE' ? `Copy Code: ${button.example || 'CODE'}` : 'Button')}
+                      </span>
                     </div>
                   ))}
                 </div>

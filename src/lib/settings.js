@@ -1,8 +1,8 @@
-import { DEFAULT_GRAPH_API_VERSION } from '../config/defaults.js';
+import { DEFAULT_GRAPH_API_VERSION, DEFAULT_SEND_DELAY_MS, MIN_SEND_DELAY_MS } from '../config/defaults.js';
 import { GRAPH_REQUIRED_KEYS, SETTINGS_FIELDS } from '../constants/settingsFields.js';
 import { STORAGE_KEYS } from '../constants/storageKeys.js';
 
-const SETTINGS_KEYS = SETTINGS_FIELDS.map((field) => field.key);
+const SETTINGS_KEYS = [...SETTINGS_FIELDS.map((field) => field.key), 'backendUrl', 'backendApiKey'];
 const NUMERIC_ID_KEYS = ['appId', 'wabaId', 'phoneNumberId'];
 const NUMERIC_ID_PATTERN = /^\d+$/;
 const GRAPH_VERSION_PATTERN = /^v\d+\.\d+$/;
@@ -12,6 +12,7 @@ const LOCALHOST_HOSTNAMES = ['localhost', '127.0.0.1'];
 export const EMPTY_SETTINGS = Object.freeze({
   ...Object.fromEntries(SETTINGS_KEYS.map((key) => [key, ''])),
   graphApiVersion: DEFAULT_GRAPH_API_VERSION,
+  sendDelayMs: String(DEFAULT_SEND_DELAY_MS),
 });
 
 /**
@@ -21,11 +22,16 @@ export const EMPTY_SETTINGS = Object.freeze({
 export function sanitizeSettings(raw) {
   const source = raw && typeof raw === 'object' ? raw : {};
   const entries = SETTINGS_KEYS.map((key) => {
-    const value = typeof source[key] === 'string' ? source[key].trim() : EMPTY_SETTINGS[key];
-    return [key, value];
+    let value = typeof source[key] === 'string' ? source[key].trim() : (source[key] !== undefined && source[key] !== null ? String(source[key]).trim() : EMPTY_SETTINGS[key]);
+    if (key === 'sendDelayMs') {
+      if (value === undefined || value === null || value === '' || isNaN(Number(value))) {
+        value = String(DEFAULT_SEND_DELAY_MS);
+      }
+    }
+    return [key, value ?? ''];
   });
   const settings = Object.fromEntries(entries);
-  settings.backendUrl = settings.backendUrl.replace(/\/+$/, '');
+  settings.backendUrl = settings.backendUrl ? settings.backendUrl.replace(/\/+$/, '') : '';
   return settings;
 }
 
@@ -84,6 +90,12 @@ export function validateSettings(settings) {
   }
   if (settings.backendUrl && !isAllowedBackendUrl(settings.backendUrl)) {
     errors.backendUrl = 'Use an https:// URL (http:// is allowed only for localhost).';
+  }
+  if (settings.sendDelayMs !== undefined && settings.sendDelayMs !== '') {
+    const delay = Number(settings.sendDelayMs);
+    if (isNaN(delay) || delay < MIN_SEND_DELAY_MS) {
+      errors.sendDelayMs = `Delay cannot be less than ${MIN_SEND_DELAY_MS} ms.`;
+    }
   }
 
   return errors;

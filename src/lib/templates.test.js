@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findStopButtonIndex, findVariables, sortTemplates, summarizeTemplate, upsertTemplate } from './templates.js';
+import { findStopButtonIndex, findVariables, getTemplateVersion, groupTemplatesByVersion, sortTemplates, summarizeTemplate, upsertTemplate } from './templates.js';
 
 const APPROVED_IMAGE_TEMPLATE = {
   id: '1',
@@ -42,7 +42,7 @@ describe('summarizeTemplate', () => {
 
   it.each([
     [{ status: 'PENDING' }, 'Status is PENDING'],
-    [{ category: 'UTILITY' }, 'Category is UTILITY'],
+    [{ category: 'AUTHENTICATION' }, 'Category is AUTHENTICATION'],
     [{ parameter_format: 'NAMED' }, "Named variables aren't supported"],
     [{ components: [{ type: 'BODY', text: 'Hi {{1}}, order {{2}}' }] }, 'Only {{1}} (name) is supported'],
     [{ components: [{ type: 'HEADER', format: 'VIDEO' }, { type: 'BODY', text: 'x' }] }, "video headers aren't supported yet"],
@@ -74,5 +74,32 @@ describe('list helpers', () => {
     const approvedNow = { ...pending, status: 'APPROVED' };
     expect(upsertTemplate([usable, pending], approvedNow)[1].status).toBe('APPROVED');
     expect(upsertTemplate([usable], pending)).toHaveLength(2);
+  });
+});
+
+describe('template versions', () => {
+  it('reads the _vN suffix', () => {
+    expect(getTemplateVersion('estimate_ready_en_v3')).toBe(3);
+    expect(getTemplateVersion('estimate_ready_en_v10')).toBe(10);
+    expect(getTemplateVersion('diwali_offer')).toBe(0);
+  });
+
+  it('groups versions of one template and puts the newest first', () => {
+    const t = (name, language = 'en') => ({ name, language });
+    const groups = groupTemplatesByVersion([
+      t('estimate_ready_en_v3'),
+      t('estimate_ready_en_v10'),
+      t('estimate_ready_en_v4'),
+      t('enquiry_ready_en_v2'),
+      t('estimate_ready_en_v3', 'hi'),
+    ]);
+    expect(groups).toHaveLength(3);
+    const estimate = groups.find((g) => g.baseName === 'estimate_ready_en' && g.language === 'en');
+    expect(estimate.versions.map((v) => v.name)).toEqual([
+      'estimate_ready_en_v10',
+      'estimate_ready_en_v4',
+      'estimate_ready_en_v3',
+    ]);
+    expect(estimate.latest.name).toBe('estimate_ready_en_v10');
   });
 });

@@ -36,8 +36,8 @@ describe('Contacts page', () => {
     expect(getStat('Invalid')).toBe('1');
     expect(getStat('Duplicates removed')).toBe('1');
     const preview = screen.getByRole('table', { name: 'Contacts ready to send' });
-    expect(within(preview).getByText('919876543210')).toBeInTheDocument();
-    expect(within(preview).getByText('919123456789')).toBeInTheDocument();
+    expect(within(preview).getByText('9876543210')).toBeInTheDocument();
+    expect(within(preview).getByText('9123456789')).toBeInTheDocument();
     expect(screen.getByText('Invalid rows (skipped) (1)')).toBeInTheDocument();
   });
 

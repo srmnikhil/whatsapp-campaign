@@ -2,6 +2,7 @@ import { Alert } from '../../components/ui/Alert.jsx';
 import { Button } from '../../components/ui/Button.jsx';
 import { Card } from '../../components/ui/Card.jsx';
 import { getFieldLabel } from '../../lib/settings.js';
+import { Icon } from '../../components/Icon.jsx';
 
 export function MissingSettingsAlert({ missingKeys, onNavigateToSettings }) {
   const missingLabels = missingKeys.map(getFieldLabel);
@@ -36,7 +37,7 @@ export function MissingSettingsAlert({ missingKeys, onNavigateToSettings }) {
 
             <div className="mt-7">
               <Button onClick={onNavigateToSettings}>
-                Configure Settings →
+                Configure Settings <Icon name="arrowRight" />
               </Button>
             </div>
           </div>

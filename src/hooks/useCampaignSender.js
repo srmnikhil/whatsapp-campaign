@@ -1,6 +1,9 @@
 import { useCallback, useRef, useState } from 'react';
 import {
   CAMPAIGN_STOP_CODES,
+  DEFAULT_SEND_DELAY_MS,
+  MAX_UNIQUE_USERS_LIMIT,
+  MIN_SEND_DELAY_MS,
   PAIR_RATE_MAX_RETRIES,
   PAIR_RATE_RETRY_BASE_MS,
   RATE_LIMIT_CODES,
@@ -29,6 +32,20 @@ export const SENDER_PHASE = Object.freeze({
   ERROR: 'error',
 });
 
+const INITIAL_SENDER = Object.freeze({
+  phase: SENDER_PHASE.IDLE,
+  campaignId: null,
+  total: 0,
+  sent: 0,
+  failed: 0,
+  notSent: 0,
+  stopReason: null,
+  template: null, // kept so a retry can reuse it
+  mediaId: null,
+  rows: [], // { recipientId, phone, name, state: 'queued'|'accepted'|'failed'|'not_sent', error? }
+  errorMessage: null,
+});
+
 const MS_PER_MSG = Math.round(1000 / SEND_PACING_MPS); // 200ms at 5 msg/s
 
 function sleep(ms) {
@@ -54,19 +71,19 @@ function isCampaignStop(error) {
  */
 export function useCampaignSender({ graphClient, backendClient, settings }) {
   const stopRequestedRef = useRef(false);
-  const [sender, setSender] = useState({
-    phase: SENDER_PHASE.IDLE,
-    campaignId: null,
-    total: 0,
-    sent: 0,
-    failed: 0,
-    notSent: 0,
-    stopReason: null,
-    rows: [], // { recipientId, phone, name, state: 'queued'|'accepted'|'failed'|'not_sent', error? }
-    errorMessage: null,
-  });
+  const [sender, setSender] = useState(INITIAL_SENDER);
 
-  const updateSender = useCallback((patch) => setSender((prev) => ({ ...prev, ...patch })), []);
+  /** Takes a partial state, or a function from the previous state to the new one. */
+  const updateSender = useCallback(
+    (patch) => setSender((prev) => (typeof patch === 'function' ? patch(prev) : { ...prev, ...patch })),
+    [],
+  );
+
+  /** Clears the finished campaign so the Send tab goes back to its steps. */
+  const resetSender = useCallback(() => {
+    stopRequestedRef.current = false;
+    setSender(INITIAL_SENDER);
+  }, []);
 
   /** Appends or updates rows by recipientId. */
   const patchRows = useCallback((updates) => {
@@ -95,49 +112,70 @@ export function useCampaignSender({ graphClient, backendClient, settings }) {
     async ({ campaignName, template, contacts, mediaId }) => {
       stopRequestedRef.current = false;
 
-      const hasNameVariable = findVariables(template.bodyText).includes('1');
-
-      // ── Step 1: Create campaign in backend ─────────────────────────────────
-      updateSender({ phase: SENDER_PHASE.CREATING, errorMessage: null, campaignId: null, rows: [] });
-
-      let campaign;
-      try {
-        campaign = await createCampaign(backendClient, {
-          name: campaignName,
-          templateName: template.name,
-          language: template.language,
-          ...(mediaId ? { headerMediaId: mediaId } : {}),
+      if (contacts && contacts.length > MAX_UNIQUE_USERS_LIMIT) {
+        updateSender({
+          phase: SENDER_PHASE.ERROR,
+          errorMessage: `Cannot send: Campaign exceeds the ${MAX_UNIQUE_USERS_LIMIT.toLocaleString()} unique user limit (${contacts.length.toLocaleString()} contacts). WhatsApp limits broadcasts to 2,000 unique users per 24 hours.`,
         });
-        await markSending(backendClient, campaign.id, mediaId ? { headerMediaId: mediaId } : {});
-      } catch (err) {
-        updateSender({ phase: SENDER_PHASE.ERROR, errorMessage: err.message ?? String(err) });
         return;
       }
 
-      const campaignId = campaign.id;
+      const configuredDelay = Number(settings?.sendDelayMs);
+      const delayMs = !isNaN(configuredDelay) && configuredDelay >= MIN_SEND_DELAY_MS ? configuredDelay : DEFAULT_SEND_DELAY_MS;
+
+      const hasNameVariable = findVariables(template.bodyText).includes('1');
+
+      // ── Step 1: Initialize Campaign ───────────────────────────────────────
+      updateSender({ phase: SENDER_PHASE.CREATING, errorMessage: null, stopReason: null, campaignId: null, rows: [], template, mediaId: mediaId ?? null });
+
+      let campaignId = `camp_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      let hasBackend = Boolean(backendClient?.request && settings?.backendUrl);
+
+      if (hasBackend) {
+        try {
+          const campaign = await createCampaign(backendClient, {
+            name: campaignName,
+            templateName: template.name,
+            language: template.language,
+            ...(mediaId ? { headerMediaId: mediaId } : {}),
+          });
+          if (campaign?.id) {
+            campaignId = campaign.id;
+            await markSending(backendClient, campaign.id, mediaId ? { headerMediaId: mediaId } : {}).catch(() => {});
+          }
+        } catch {
+          // If backend fails or server is absent, continue seamlessly in direct client-side mode
+          hasBackend = false;
+        }
+      }
+
       updateSender({ campaignId, phase: SENDER_PHASE.SENDING, total: contacts.length, sent: 0, failed: 0, notSent: 0, rows: [] });
 
-      // ── Step 2: Add recipients in chunks ───────────────────────────────────
-      // Build a map: phone → recipientId so we can set biz_opaque_callback_data
+      // ── Step 2: Set up phone to recipient map ──────────────────────────────
       const phoneToRecipient = new Map(); // phone → { id, name }
-      for (let i = 0; i < contacts.length; i += RECIPIENTS_CHUNK_SIZE) {
-        const chunk = contacts.slice(i, i + RECIPIENTS_CHUNK_SIZE);
-        let result;
-        try {
-          result = await addRecipients(
-            backendClient,
-            campaignId,
-            chunk.map(({ phone, name }) => ({ phone, name: name || '' })),
-          );
-        } catch (err) {
-          // Non-fatal: if adding recipients fails, we can't continue
-          await stopCampaign(backendClient, campaignId, `Failed to add recipients: ${err.message}`);
-          updateSender({ phase: SENDER_PHASE.ERROR, errorMessage: `Failed to register recipients: ${err.message}` });
-          return;
-        }
-        for (const r of result.recipients) {
-          const contact = chunk.find((c) => c.phone === r.phone);
-          phoneToRecipient.set(r.phone, { id: r.id, name: contact?.name ?? '' });
+      contacts.forEach((c, idx) => {
+        phoneToRecipient.set(c.phone, { id: `${campaignId}_${idx + 1}`, name: c.name || '' });
+      });
+
+      if (hasBackend) {
+        for (let i = 0; i < contacts.length; i += RECIPIENTS_CHUNK_SIZE) {
+          const chunk = contacts.slice(i, i + RECIPIENTS_CHUNK_SIZE);
+          try {
+            const result = await addRecipients(
+              backendClient,
+              campaignId,
+              chunk.map(({ phone, name }) => ({ phone, name: name || '' })),
+            );
+            if (result?.recipients) {
+              for (const r of result.recipients) {
+                const contact = chunk.find((c) => c.phone === r.phone);
+                phoneToRecipient.set(r.phone, { id: r.id, name: contact?.name ?? '' });
+              }
+            }
+          } catch {
+            hasBackend = false;
+            break;
+          }
         }
       }
 
@@ -150,36 +188,43 @@ export function useCampaignSender({ graphClient, backendClient, settings }) {
       }));
       updateSender({ rows: initialRows });
 
-      // ── Step 3: Send loop at SEND_PACING_MPS msg/s ────────────────────────
-      const pendingResults = []; // batched before posting
+      // ── Step 3: Send loop with configured delay ───────────────────────────
+      const pendingResults = [];
       let campaignStopped = false;
       let campaignStopReason = null;
+      let sentCount = 0;
+      let failedCount = 0;
+      const finalRowMap = new Map(initialRows.map((r) => [r.recipientId, { ...r }]));
 
-      /** Flush pending results to the backend (fire-and-forget style, non-blocking). */
+      /** Flush pending results to the backend if connected */
       const flushResults = async () => {
-        if (pendingResults.length === 0) return;
+        if (!hasBackend || pendingResults.length === 0) return;
         const batch = pendingResults.splice(0, RESULTS_BATCH_SIZE);
         try {
           await reportResults(backendClient, campaignId, batch);
         } catch {
-          // Re-queue for next flush; don't fail the send loop
           pendingResults.unshift(...batch);
         }
       };
 
       for (let i = 0; i < contacts.length; i++) {
-        // Flush results every batch
-        if (pendingResults.length >= RESULTS_BATCH_SIZE) {
-          flushResults(); // async, doesn't block
+        if (hasBackend && pendingResults.length >= RESULTS_BATCH_SIZE) {
+          flushResults();
         }
 
         if (stopRequestedRef.current || campaignStopped) {
-          // Mark remaining rows not_sent
-          const notSentRows = contacts.slice(i).map(({ phone }) => ({
-            recipientId: phoneToRecipient.get(phone)?.id ?? phone,
-            phone,
-            state: 'not_sent',
-          }));
+          const notSentRows = contacts.slice(i).map(({ phone }) => {
+            const rid = phoneToRecipient.get(phone)?.id ?? phone;
+            return {
+              recipientId: rid,
+              phone,
+              state: 'not_sent',
+            };
+          });
+          notSentRows.forEach((r) => {
+            const prev = finalRowMap.get(r.recipientId) || {};
+            finalRowMap.set(r.recipientId, { ...prev, ...r });
+          });
           patchRows(notSentRows);
           updateSender((prev) => ({ ...prev, notSent: prev.notSent + notSentRows.length }));
           break;
@@ -208,13 +253,13 @@ export function useCampaignSender({ graphClient, backendClient, settings }) {
           try {
             const { wamid } = await sendMessage(graphClient, settings.phoneNumberId, payload);
             pendingResults.push({ recipientId, state: 'accepted', wamid });
-            patchRows([{ recipientId, state: 'accepted' }]);
+            finalRowMap.set(recipientId, { ...(finalRowMap.get(recipientId) || {}), state: 'accepted', wamid });
+            patchRows([{ recipientId, state: 'accepted', wamid }]);
+            sentCount++;
             updateSender((prev) => ({ ...prev, sent: prev.sent + 1 }));
             accepted = true;
           } catch (err) {
-
             if (isCampaignStop(err)) {
-              // Stop the whole campaign
               campaignStopped = true;
               campaignStopReason = `Meta error ${err.code}: ${err.message}`;
               pendingResults.push({
@@ -222,7 +267,9 @@ export function useCampaignSender({ graphClient, backendClient, settings }) {
                 state: 'failed',
                 error: { code: String(err.code ?? 'unknown'), message: err.message },
               });
+              finalRowMap.set(recipientId, { ...(finalRowMap.get(recipientId) || {}), state: 'failed', error: err.message });
               patchRows([{ recipientId, state: 'failed', error: err.message }]);
+              failedCount++;
               updateSender((prev) => ({ ...prev, failed: prev.failed + 1 }));
               break;
             }
@@ -234,29 +281,31 @@ export function useCampaignSender({ graphClient, backendClient, settings }) {
               continue;
             }
 
-            // Any other error: mark failed, continue
             pendingResults.push({
               recipientId,
               state: 'failed',
               error: { code: String(err.code ?? 'timeout'), message: err.message ?? 'Send failed' },
             });
+            finalRowMap.set(recipientId, { ...(finalRowMap.get(recipientId) || {}), state: 'failed', error: err.message });
             patchRows([{ recipientId, state: 'failed', error: err.message }]);
+            failedCount++;
             updateSender((prev) => ({ ...prev, failed: prev.failed + 1 }));
             break;
           }
         }
 
-        // Pace: wait until this message slot's time has elapsed
-        const slotEnd = Date.now() + MS_PER_MSG;
+        // Delay between sends
+        const slotEnd = Date.now() + delayMs;
         const remaining = slotEnd - Date.now();
         if (remaining > 0) await sleep(remaining);
       }
 
-      // ── Step 4: Flush any remaining results ───────────────────────────────
-      // Flush up to 5 times (fire-and-forget is fine for the rest; webhook catches them)
-      for (let attempt = 0; attempt < 5 && pendingResults.length > 0; attempt++) {
-        await flushResults();
-        if (pendingResults.length > 0) await sleep(1000);
+      // ── Step 4: Flush any remaining backend results ────────────────────────
+      if (hasBackend) {
+        for (let attempt = 0; attempt < 5 && pendingResults.length > 0; attempt++) {
+          await flushResults();
+          if (pendingResults.length > 0) await sleep(1000);
+        }
       }
 
       // ── Step 5: Mark campaign complete or stopped ─────────────────────────
@@ -264,14 +313,40 @@ export function useCampaignSender({ graphClient, backendClient, settings }) {
         campaignStopReason = 'Stopped by user';
       }
 
-      try {
-        if (campaignStopped || stopRequestedRef.current) {
-          await stopCampaign(backendClient, campaignId, campaignStopReason ?? 'Stopped');
-        } else {
-          await completeCampaign(backendClient, campaignId);
+      if (hasBackend) {
+        try {
+          if (campaignStopped || stopRequestedRef.current) {
+            await stopCampaign(backendClient, campaignId, campaignStopReason ?? 'Stopped');
+          } else {
+            await completeCampaign(backendClient, campaignId);
+          }
+        } catch {
+          // Best-effort
         }
+      }
+
+      // ── Step 6: Persist campaign summary in browser localStorage ─────────
+      try {
+        const storedKey = 'garaaz-wa-campaigns.campaigns';
+        const existing = JSON.parse(globalThis.localStorage?.getItem(storedKey) || '[]');
+        const finalRows = Array.from(finalRowMap.values());
+        const summary = {
+          id: campaignId,
+          name: campaignName,
+          templateName: template.name,
+          language: template.language,
+          createdAt: new Date().toISOString(),
+          status: campaignStopped || stopRequestedRef.current ? 'stopped' : 'completed',
+          stopReason: campaignStopReason,
+          total: contacts.length,
+          sent: sentCount,
+          failed: failedCount,
+          notSent: Math.max(0, contacts.length - sentCount - failedCount),
+          rows: finalRows,
+        };
+        globalThis.localStorage?.setItem(storedKey, JSON.stringify([summary, ...existing.slice(0, 49)]));
       } catch {
-        // Best-effort; the campaign state is already effectively done
+        // Local persistence fallback
       }
 
       updateSender({
@@ -282,5 +357,5 @@ export function useCampaignSender({ graphClient, backendClient, settings }) {
     [graphClient, backendClient, settings, updateSender, patchRows],
   );
 
-  return { sender, startSend, stopSend };
+  return { sender, startSend, stopSend, resetSender };
 }

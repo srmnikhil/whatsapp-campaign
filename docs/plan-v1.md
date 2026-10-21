@@ -1,7 +1,7 @@
 # Garaaz WhatsApp Marketing Campaign Tool — lean v1 plan
 
 Status: **approved (revision 4, with three small changes).** Target: a working demo in about 1 week.
-Companion doc: [`whatsapp-limits.md`](./whatsapp-limits.md) (limits, pricing, payloads, sources).
+Companion doc: [`docs/whatsapp-limits.md`](./whatsapp-limits.md) (limits, pricing, payloads, sources).
 
 **What v1 does:**
 - **Settings:** Cloud API details.
@@ -42,7 +42,7 @@ It uses only the official Meta Cloud API.
 
 ### 1.3 Limits doc
 
-Done: [`whatsapp-limits.md`](./whatsapp-limits.md). What matters for v1:
+Done: [`docs/whatsapp-limits.md`](./whatsapp-limits.md). What matters for v1:
 
 - **The daily limit is per portfolio and shared with SuprSend.** The API doesn't expose how much
   is left. We estimate it as **tier − our unique recipients in the last 24 h − SuprSend reserve**,
@@ -106,7 +106,7 @@ AiSensy and Wati use the same official API and follow the same pattern.
 
 ## 3. Folder structure
 
-**Frontend: `garaaz-wa-campaigns/web/`**
+**Frontend: `garaaz-wa-campaigns/` (repo root)**
 
 ```
 src/
@@ -315,7 +315,7 @@ wa_opt_outs             phone UNIQUE · source: button|keyword · createdAt
 
 | Step | Work | Days |
 |---|---|---|
-| 1 | Scaffold `web/`. Settings, Test connection, and one test send of an approved template to my number. | 1 |
+| 1 | Scaffold the app at the repo root. Settings, Test connection, and one test send of an approved template to my number. | 1 |
 | 2 | Contacts import (Sheet, .csv, .xlsx), normalisation, counts | 1 |
 | 3 | **Image upload test first** (decides the template fallback), then the template list, create and refresh | 1 |
 | 4 | Backend module: campaigns, recipients, results, opted-out, usage, upload proxy, webhook (signature, statuses, opt-outs). Deploy to UAT. | 2 |
